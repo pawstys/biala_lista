@@ -1,3 +1,8 @@
+# Dane aplikacji
+/pliki_json/*.json
+/pliki_json/*.json.sha512sum
+biala_lista.db
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
