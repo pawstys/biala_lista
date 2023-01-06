@@ -1,4 +1,6 @@
-import json, sqlite3
+from sqlite3 import connect
+from json import load
+from openpyxl import load_workbook
 from hashlib import sha512
 from datetime import datetime
 from os import sep, listdir
@@ -71,9 +73,9 @@ def WczytajPlikPlaski(dt):
         with open(f'.{sep}pliki_json{sep}{plik_json}.sha512sum') as f:
             wpis = f.readline()
             if (wpis[-14:-1] == plik_json) and (wpis[:128] == ObliczSumeKontrolna(plik_json)):
-                print(f'Plik {plik_json} jest poprawny. Wczytuję plik z dnia: {dt}')
+                print(f'Plik {plik_json} jest poprawny. Wczytuję plik z dnia: {dt}, proszę czekać...')
                 with open(path):
-                    dane = json.load(open(path))
+                    dane = load(open(path))
                 cursor.execute(f"INSERT INTO Naglowek VALUES ('{dt}', {dane['naglowek']['liczbaTransformacji']})")     
                 cursor.executemany("INSERT INTO SkrotyPodatnikowCzynnych VALUES (?, ?)", [(dt, dane['skrotyPodatnikowCzynnych'][i]) for i in range(len(dane['skrotyPodatnikowCzynnych']))])
                 cursor.executemany("INSERT INTO SkrotyPodatnikowZwolnionych VALUES (?, ?)", [(dt, dane['skrotyPodatnikowZwolnionych'][i]) for i in range(len(dane['skrotyPodatnikowZwolnionych']))])
@@ -86,7 +88,7 @@ def WczytajPlikPlaski(dt):
 
 if __name__ == '__main__':
 
-    db = sqlite3.connect('biala_lista.db')
+    db = connect('biala_lista.db')
     cursor = db.cursor()
     UtworzBazeDanych()
     for plik in listdir(f'.{sep}pliki_json'):
@@ -96,28 +98,22 @@ if __name__ == '__main__':
                 WczytajPlikPlaski(data)
     db.commit()
 
-    print(WeryfikujPodatnik(datetime(2023,1,1).date(), '5250000794', '55124069601701080001214133'))
-    print(WeryfikujPodatnik(datetime(2023,1,1).date(), '9570549503', '72249010283557000000032678'))
-    print(WeryfikujPodatnik(datetime(2023,1,1).date(), '9451972201', '93114010810000354338001012'))
-
-    print(WeryfikujPodatnik(datetime(2023,1,2).date(), '5250000794', '55124069601701080001214133'))
-    print(WeryfikujPodatnik(datetime(2023,1,2).date(), '9570549503', '72249010283557000000032678'))
-    print(WeryfikujPodatnik(datetime(2023,1,2).date(), '9451972201', '93114010810000354338001012'))
-
-    print(WeryfikujPodatnik(datetime(2023,1,3).date(), '5250000794', '55124069601701080001214133'))
-    print(WeryfikujPodatnik(datetime(2023,1,3).date(), '9570549503', '72249010283557000000032678'))
-    print(WeryfikujPodatnik(datetime(2023,1,3).date(), '9451972201', '93114010810000354338001012'))
-
-    print(WeryfikujPodatnik(datetime(2023,1,4).date(), '5250000794', '55124069601701080001214133'))
-    print(WeryfikujPodatnik(datetime(2023,1,4).date(), '9570549503', '72249010283557000000032678'))
-    print(WeryfikujPodatnik(datetime(2023,1,4).date(), '9451972201', '93114010810000354338001012'))
-
-    print(WeryfikujPodatnik(datetime(2023,1,5).date(), '5250000794', '55124069601701080001214133'))
-    print(WeryfikujPodatnik(datetime(2023,1,5).date(), '9570549503', '72249010283557000000032678'))
-    print(WeryfikujPodatnik(datetime(2023,1,5).date(), '9451972201', '93114010810000354338001012'))
-
-    print(WeryfikujPodatnik(datetime(2023,1,6).date(), '5250000794', '55124069601701080001214133'))
-    print(WeryfikujPodatnik(datetime(2023,1,6).date(), '9570549503', '72249010283557000000032678'))
-    print(WeryfikujPodatnik(datetime(2023,1,6).date(), '9451972201', '93114010810000354338001012'))
+    path = 'biala_lista_test.xlsx'
+    try:
+        skoroszyt = load_workbook(path)
+        arkusz = skoroszyt.active
+        print(f'Aktualizacja statusów w pliku: {path} ...')
+        for wiersz in arkusz.iter_rows(min_row=2):
+            try:    
+                data = wiersz[0].value.date()
+                nip = wiersz[1].value
+                nrb = wiersz[2].value
+                wiersz[3].value = WeryfikujPodatnik(data, str(nip), str(nrb))
+            except:
+                wiersz[3].value = 'Nieprawidłowy format danych wejściowych'
+        skoroszyt.save(path)
+        skoroszyt.close()
+    except:
+        print(f'Brak prawidłowego pliku z danymi wejściowymi: {path}')
 
     db.close()
